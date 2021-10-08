@@ -1,14 +1,14 @@
 {
-  "name": "hxz-api",
+  "name": "topmode-api",
   "version": "1.0.0",
-  "description": "hexa-api",
+  "description": "topmode-api",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Hexagonz/Hexa-api.git"
+    "url": "git+https://github.com/TopModeJapan/Hexa-api.git"
   },
   "keywords": [
     "YNTKTS"
@@ -16,9 +16,9 @@
   "author": "Hexagon",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Hexagonz/Hexa-Api/issues"
+    "url": "https://github.com/TopModeJapan/Hexa-Api/issues"
   },
-  "homepage": "https://github.com/Hexagonz/Hexa-Api#readme",
+  "homepage": "https://github.com/TopModeJapan/Hexa-Api#readme",
   "dependencies": {
     "axios": "^0.21.1",
     "cheerio": "^1.0.0-rc.10",
