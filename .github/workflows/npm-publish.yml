@@ -1,41 +1,97 @@
+# GitHub Actions workflow
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/workflow-syntax-for-github-actions
+# https://help.github.com/en/actions/automating-your-workflow-with-github-actions/contexts-and-expression-syntax-for-github-actions
 
-name: NPM publish CD workflow
+name: CI-CD
 
 on:
-  release:
-    types: [published]
+  push:
+    branches:
+      - "*"
+    tags-ignore:
+      - "*"
+
+  schedule:
+    - cron: "0 0 1 * *"
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  test:
+    name: Node ${{ matrix.node }} on ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - ubuntu-latest
+          - macos-latest
+          - windows-latest
+        node:
+          # - 10 - The library supports Node 10, but the tests don't
+          - 12
+          - 14
 
     steps:
-      - uses: actions/checkout@v2
-        with:
-          ref: ${{ github.event.release.target_commitish }}
-      # install Node.js
-      - name: Use Node.js 12
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Install Node ${{ matrix.node }}
         uses: actions/setup-node@v1
         with:
-          node-version: 12
-      - run: yarn install
-      # set up git since we will later push to the repo
-      - run: git config --global user.name "GitHub CD bot"
-      - run: git config --global user.email "savchenkoalexander91@gmail.com"
-      # upgrade npm version in package.json to the tag used in the release.
-      - run: npm version ${{ github.event.release.tag_name }}
-      # build the project
-      - run: npm run build
-      # run tests just in case
-      - run: npm test
-      - run: npm config set '//registry.npmjs.org/:_authToken' "${{ secrets.NPM_TOKEN }}"
-      # publish to NPM -> there is one caveat, continue reading for the fix
-      - run: npm publish --tag ${{ github.event.release.target_commitish }}
-        env:
-          # Use a token to publish to NPM. See below for how to set it up
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
-      # push the version changes to GitHub
-      - run: git push
-        env:
-          # The secret is passed automatically. Nothing to configure.
+          node-version: ${{ matrix.node }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linters
+        run: npm run lint
+
+      - name: Build the code
+        run: npm run build
+
+      - name: Run tests
+        run: npm run coverage
+
+      - name: Send code coverage results to Coveralls
+        uses: coverallsapp/github-action@v1.1.0
+        with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel: true
+
+  coverage:
+    name: Code Coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+    steps:
+      - name: Let Coveralls know that all tests have finished
+        uses: coverallsapp/github-action@v1.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          parallel-finished: true
+
+  deploy:
+    name: Publish to NPM
+    if: github.ref == 'refs/heads/master'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: test
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v2
+
+      - name: Install Node
+        uses: actions/setup-node@v1
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build the code
+        run: npm run build
+
+      - name: Publish to NPM
+        uses: ./
+        with:
+          token: ${{ secrets.NPM_TOKEN }}
